@@ -42,7 +42,7 @@ def get_config():
     if not token or not chat_id:
         sys.exit(
             "Error: TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set "
-            "in the environment or in a .env file next to this script."
+            "in the environment or in a .env file (pass its path via SKILL_ENV_FILE)."
         )
 
     return token, chat_id
