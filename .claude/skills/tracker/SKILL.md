@@ -1,66 +1,59 @@
 ---
 name: "tracker"
-description: "Проходит по списку URL и собирает таблицу цен"
+description: "Обходит список товаров Ozon, собирает таблицу цен, сравнивает её с прошлым снимком в GitHub-репозитории zindzay/tracker-data, сохраняет новый снимок и отправляет сводку значимых изменений в Telegram. Используй, когда нужно проверить или отследить цены на отслеживаемые товары."
+model: opus
 ---
 
 # Tracker
 
-## Quick start
+## Файлы скилла
 
-Входные данные URL
+- `urls.txt` — список отслеживаемых товаров, одна ссылка на строку. Чтобы добавить или убрать товар, правь только этот файл
+- `KNOWLEDGE.md` — правила значимости изменения цены
+- `scripts/send.py` — отправка текста в Telegram
 
-- https://www.ozon.ru/product/karta-pamyati-512gb-microsd-sandisk-nintendo-switch-sdsqxao-512g-gnczn-820770107/?at=1pql1TmcJ_vrGhtMnSs6Pb-FtmUuTTAZ&sh=xJSuSCfhKw
-- https://www.ozon.ru/product/karta-pamyati-128gb-microsd-sandisk-nintendo-switch-sdsqxao-128g-gnczn-272323160/?at=1pql1RsZJgJMU_BqdyPMMMQ6mLWxjgq2
-- https://www.ozon.ru/product/lexar-microsd-express-card-dlya-nintendo-switch-2-1tb-2916614830/?at=1pul1OskPrQ0YzhGnWOLqBHnqfqMjmP5
-- https://www.ozon.ru/product/karta-pamyati-sandisk-microsdxc-512-gb-dlya-nintendo-switch-100-90-mb-s-2583756233/?at=1pul1P0gLjKlR3WlJE2UYknXb7sw2q4b
-- https://www.ozon.ru/product/microsd-express-card-dlya-nintendo-switch-2-1tb-5442521333/?at=1pul1ZRAaRxgadufKctX3usf4vKl6B6p
-- https://www.ozon.ru/product/lexar-microsd-express-card-dlya-nintendo-switch-2-1tb-3415256585/?at=1pul1XTgPWZFL9ldfin5I6XQI03OJCTK
-- https://www.ozon.ru/product/microsd-express-card-dlya-nintendo-switch-2-1tb-5684497053/?at=1pul1XDCz8Y0s_QXIbmrfRVz1z9bt8Pq
-- https://www.ozon.ru/product/lexar-microsd-express-card-dlya-nintendo-switch-2-1tb-3289746466/?at=1pul1Y7aRaZVzIBNbJP6hX494d37YToD
-- https://www.ozon.ru/product/l-exar-microsd-express-card-dlya-nintendo-switch-2-1tb-4785717093/?at=1pul1SUu4d8Tw7SxFQDMotK4sFiKaSBV
+## Формат данных
 
-## Секреты
-Перед запуском найди .env в подключённых папках пользователя,
-только по имени файла, НЕ открывая и НЕ выводя его содержимое:
-`find / -name ".env" -path "*mnt*" 2>/dev/null | head`
-Затем запусти скрипт с найденным путём:
-`SKILL_ENV_FILE=<путь> python3 send.py ...`
+Файл снимка: `YYYY-MM-DD.json` (дата запуска по локальному времени, `date +%F`), JSON-массив, одна запись на товар:
 
-Никогда не делай cat/head/Read на .env и не цитируй ключи.
-Если .env не найден, попроси пользователя положить его
-в подключённую папку, а не вставлять ключ в чат.
-
-Алгоритм
-
-1. Не используй данные из контекста от прошлых запусков скила, выполняй все шаги с 0, по новой
-2. Для каждого URL из списка ассистент вызывает уже готовый скилл extract-price, трекер переиспользует extract-price, а не дублирует его логику
-3. Между запросами к разным URL делай паузу (несколько секунд), чтобы не словить антибот-блокировку Ozon при обходе списка
-4. Получает объекты с ценами
-5. Результат записывается в таблицу, одна строка на товар, в строке — URL и поля regular_price, sale_price, has_credit, таблица json
-6. Получи список файлов из репозитория zindzay/tracker-data через GitHub MCP (mcp__github__* / mcp__claude_ai_GitHub__*), а не через прямой git clone
-7. Прочитай последний по дате файл (YYYY-MM-DD.json), если файлов нет, то переходи к пункту 9
-8. Сопоставь товары из новой таблицы с товарами из таблицы пункта 6, сопоставление делай по URL (а не по полям цены — они как раз то, что сравнивается)
-9. Значимость изменения цены описана в файле KNOWLEDGE.md рядом с этим скиллом
-10. Напиши в чат значимые изменения
-11. После анализа полученную таблицу нужно загрузить в репозиторий zindzay/tracker-data через тот же GitHub MCP
-12. Сформируй человеко-читаемый отчёт и отправь в чат используя скрипт send.py, если изменений нет — напиши в чат «Значимых изменений цен нет»
-
-Формат файла: json
-Название файла: YYYY-MM-DD.json
-Пример записи в файле:
 ```json
 [
   {
-    "url": "https://www.ozon.ru/product/...",
+    "url": "https://www.ozon.ru/product/...-820770107/",
     "regular_price": "17131₽",
     "sale_price": "15417₽",
     "has_credit": true
-  },
-  {
-    "url": "https://www.ozon.ru/product/...",
-    "regular_price": "27131₽",
-    "sale_price": "18417₽",
-    "has_credit": false
   }
 ]
 ```
+
+**URL всегда хранится и сравнивается без query-строки** (всё после `?` отбрасывается, например `?at=...&sh=...`). Иначе сопоставление с прошлыми снимками не сработает.
+
+Репозиторий с историей: `zindzay/tracker-data`, ветка **`master`**. Работать с ним только через GitHub MCP (`mcp__github__*` / `mcp__claude_ai_GitHub__*`), без `git clone`.
+
+## Секреты
+
+`.env` с `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID` ищи только по имени файла, НЕ открывая и НЕ выводя его содержимое:
+
+1. Cowork (подключённые папки): `find / -name ".env" -path "*mnt*" 2>/dev/null | head`
+2. Если не найден — `.env` в корне проекта (рядом с папкой `.claude`)
+
+Никогда не делай cat/head/Read на `.env` и не цитируй ключи. Если `.env` не найден нигде, попроси пользователя положить его в корень проекта (или в подключённую папку), а не вставлять ключ в чат.
+
+## Алгоритм
+
+1. Не используй данные из контекста от прошлых запусков скилла, выполняй все шаги с нуля
+2. Прочитай список URL из `urls.txt`, отбрось у каждого query-строку
+3. Для каждого URL получи цену по правилам скилла `extract-price`: открой страницу в браузере и выполни `extract-price/scripts/extract.js` через `javascript_tool`. Логику разбора не дублируй — используй этот скрипт. Скрипт ждёт несколько секунд после загрузки — это и есть пауза между товарами против антибота Ozon. Удобно обходить товары пачками через `browser_batch` (navigate + javascript_tool на каждый товар)
+4. Собери таблицу в формате снимка. Поле `status` из extract-price в снимок не пишется: товар не в продаже — это `regular_price` и `sale_price`, равные `null`
+5. Получи список файлов репозитория `zindzay/tracker-data` (ветка `master`) и прочитай последний по дате файл `YYYY-MM-DD.json`, не считая файла за сегодня. Если таких файлов нет — переходи к шагу 7
+6. **Анализ**:
+   - сопоставь товары новой таблицы со старой по URL (а не по полям цены — они как раз то, что сравнивается)
+   - примени правила из `KNOWLEDGE.md`
+   - сформируй diff значимых изменений в виде JSON: `[{ "url", "field", "old", "new", "change_percent" }]`, где `field` — `regular_price`, `sale_price`, `has_credit`, `removed` (снят с продажи) или `returned` (снова в продаже); для `has_credit`, `removed` и `returned` `change_percent` = `null`. Если значимых изменений нет — `[]`
+7. Если прошлого снимка нет — анализ пропусти, diff считай пустым
+8. Загрузи новую таблицу в `zindzay/tracker-data`, ветка `master`, путь `YYYY-MM-DD.json`. Если файл за сегодня уже есть (повторный запуск), сначала получи его `sha` через `get_file_contents` и передай в `create_or_update_file`, иначе загрузка упадёт
+9. **Сводка — модель Haiku.** Если diff непустой, запусти сабагента через Agent tool с `model: "haiku"` и передай ему только готовый diff из шага 6. Задача сабагента — чисто форматирование: превратить diff в короткий человеко-читаемый текст (одна строка на изменение: товар, поле, было → стало, %), без повторного анализа и без новых выводов
+10. Отправка:
+    - diff непустой — напиши сводку в чат и отправь её в Telegram из корня проекта: `SKILL_ENV_FILE=<путь к .env> python3 .claude/skills/tracker/scripts/send.py "<текст>"`
+    - diff пустой — напиши в чат «Значимых изменений цен нет». В Telegram ничего не отправляй, Haiku не вызывай
