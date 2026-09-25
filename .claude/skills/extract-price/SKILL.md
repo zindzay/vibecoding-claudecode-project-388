@@ -14,6 +14,7 @@ description: "Извлекает цену товара Ozon по ссылке н
 
 ```json
 {
+  "url": "https://www.ozon.ru/product/...-820770107/",
   "regular_price": "17131₽",
   "sale_price": "15417₽",
   "has_credit": true,
